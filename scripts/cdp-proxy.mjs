@@ -466,15 +466,16 @@ const server = http.createServer(async (req, res) => {
       res.end(JSON.stringify({ value: resp.result?.result?.value }));
     }
 
-    // GET /screenshot?target=xxx&file=/tmp/x.png&fullPage=1 - 截图
+    // GET /screenshot?target=xxx&file=/tmp/x.png - 截图（默认整页）
     else if (pathname === '/screenshot') {
       const sid = await ensureSession(q.target);
       const format = q.format || 'png';
-      const fullPage = q.fullPage === '1' || q.fullPage === 'true';
+      // 未传 fullPage 或 fullPage != '0' 时默认截取整页
+      const captureBeyondViewport = !q.fullPage || q.fullPage !== '0';
       const resp = await sendCDP('Page.captureScreenshot', {
         format,
         quality: format === 'jpeg' ? 80 : undefined,
-        captureBeyondViewport: fullPage,
+        captureBeyondViewport,
       }, sid);
       if (q.file) {
         fs.writeFileSync(q.file, Buffer.from(resp.result.data, 'base64'));
@@ -510,7 +511,7 @@ const server = http.createServer(async (req, res) => {
           '/eval?target=': 'POST body=JS表达式 - 执行 JS',
           '/click?target=': 'POST body=CSS选择器 - 点击元素',
           '/scroll?target=&y=&direction=': 'GET - 滚动页面',
-          '/screenshot?target=&file=&fullPage=1': 'GET - 截图（fullPage=1 截取整页）',
+          '/screenshot?target=&file=&fullPage=0': 'GET - 截图（默认整页，fullPage=0 仅截可视区域）',
         },
       }));
     }

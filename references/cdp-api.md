@@ -82,11 +82,11 @@ curl -s "http://localhost:3456/scroll?target=ID&y=3000"
 curl -s "http://localhost:3456/scroll?target=ID&direction=bottom"
 ```
 
-### GET /screenshot?target=ID&file=/tmp/shot.png&fullPage=1
-截图。指定 `file` 参数保存到本地文件；不指定则返回图片二进制。可选 `format=jpeg`。添加 `fullPage=1` 截取整页。
+### GET /screenshot?target=ID&file=/tmp/shot.png&fullPage=0
+截图（默认整页）。指定 `file` 参数保存到本地文件；不指定则返回图片二进制。可选 `format=jpeg`。添加 `fullPage=0` 仅截可视区域。
 ```bash
 curl -s "http://localhost:3456/screenshot?target=ID&file=/tmp/shot.png"
-curl -s "http://localhost:3456/screenshot?target=ID&file=/tmp/shot.png&fullPage=1"
+curl -s "http://localhost:3456/screenshot?target=ID&file=/tmp/shot.png&fullPage=0"
 ```
 
 ## /eval 使用提示
