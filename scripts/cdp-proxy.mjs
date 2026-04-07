@@ -32,9 +32,49 @@ if (typeof globalThis.WebSocket !== 'undefined') {
   }
 }
 
+// --- 通过 HTTP API 获取 Chrome WebSocket URL（新增独立函数） ---
+async function fetchChromeWebSocketUrl(port) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://127.0.0.1:${port}/json/version`, { timeout: 5000 }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(data);
+          const wsUrl = j.webSocketDebuggerUrl;
+          if (wsUrl) {
+            // 从 ws://127.0.0.1:9222/devtools/browser/xxx 提取路径
+            const match = wsUrl.match(/ws:\/\/127\.0\.0\.1:\d+(\/devtools\/browser\/[\w-]+)/);
+            if (match) {
+              resolve({ port, wsPath: match[1] });
+              return;
+            }
+          }
+        } catch { /* 解析失败 */ }
+        resolve(null);
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
 // --- 自动发现 Chrome 调试端口 ---
 async function discoverChromePort() {
-  // 1. 尝试读 DevToolsActivePort 文件
+  // 1. 优先通过 HTTP API 扫描常用端口，获取最新的 WebSocket URL
+  const commonPorts = [9222, 9229, 9333];
+  for (const port of commonPorts) {
+    const ok = await checkPort(port);
+    if (ok) {
+      const wsInfo = await fetchChromeWebSocketUrl(port);
+      if (wsInfo) {
+        console.log(`[CDP Proxy] 通过 /json/version 发现 Chrome (端口 ${port})`);
+        return wsInfo;
+      }
+    }
+  }
+
+  // 2. 回退：从 DevToolsActivePort 文件读取端口和 WebSocket 路径
   const possiblePaths = [];
   const platform = os.platform();
 
@@ -77,8 +117,7 @@ async function discoverChromePort() {
     } catch { /* 文件不存在，继续 */ }
   }
 
-  // 2. 扫描常用端口
-  const commonPorts = [9222, 9229, 9333];
+  // 3. 扫描常用端口
   for (const port of commonPorts) {
     const ok = await checkPort(port);
     if (ok) {
