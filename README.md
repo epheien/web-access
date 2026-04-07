@@ -28,7 +28,7 @@ Claude Code 原本有 WebSearch、WebFetch，但缺少调度策略和浏览器�
 
 ---
 
-## v2.4 能力
+## v2.4.3 能力
 
 | 能力 | 说明 |
 |------|------|
@@ -39,10 +39,22 @@ Claude Code 原本有 WebSearch、WebFetch，但缺少调度策略和浏览器�
 | 站点经验积累 | 按域名存储操作经验（URL 模式、平台特征、已知陷阱），跨 session 复用 |
 | 媒体提取 | 从 DOM 直取图片/视频 URL，或对视频任意时间点截帧分析 |
 
-**v2.4 更新：**
+**v2.4.3 更新：**
+- **修复 CLAUDE_SKILL_DIR 路径问题** — bash 代码块改用 `${CLAUDE_SKILL_DIR}` 字符串替换语法，修复 Windows Git Bash 路径转换错误和变量未设置问题（#47 #46）
+- **站点经验列表合并到前置检查** — 启动检查通过后自动输出已有站点经验列表，移除不可靠的 `!` 内联注入
+
+<details><summary>v2.4.1 更新</summary>
+
+- **跨平台支持** — 脚本从 bash 迁移到 Node.js，Windows / Linux / macOS 均可使用
+- **DOM 边界穿透** — 新增技术事实：eval 递归遍历可穿透 Shadow DOM、iframe 等选择器不可跨越的边界
+</details>
+
+<details><summary>v2.4 更新</summary>
+
 - **站点内 URL 可靠性** — 新增事实说明：站点生成的链接自带完整上下文，手动构造的 URL 可能缺失隐式必要参数
 - **平台错误提示不可信** — 新增技术事实：平台返回的"内容不存在"等提示可能是访问方式问题而非内容本身问题
 - **小红书站点经验增强** — xsec_token 机制、创作者平台状态校验、暂存草稿流程
+</details>
 
 <details><summary>v2.3 更新</summary>
 
@@ -59,7 +71,14 @@ Claude Code 原本有 WebSearch、WebFetch，但缺少调度策略和浏览器�
 帮我安装这个 skill：https://github.com/eze-is/web-access
 ```
 
-**方式二：手动**
+**方式二：Plugin 安装**
+
+```bash
+claude plugin marketplace add https://github.com/eze-is/web-access
+claude plugin install web-access@web-access --scope user
+```
+
+**方式三：手动**
 
 ```bash
 git clone https://github.com/eze-is/web-access ~/.claude/skills/web-access
@@ -72,10 +91,12 @@ CDP 模式需要 **Node.js 22+** 和 Chrome 开启远程调试：
 1. Chrome 地址栏打开 `chrome://inspect/#remote-debugging`
 2. 勾选 **Allow remote debugging for this browser instance**（可能需要重启浏览器）
 
-运行环境检查：
+环境检查（Agent 运行时会自动完成前置检查，无需手动执行）：
 
 ```bash
-bash ~/.claude/skills/web-access/scripts/check-deps.sh
+node "${CLAUDE_SKILL_DIR}/scripts/check-deps.mjs"
+# $CLAUDE_SKILL_DIR 是 skill 加载时自动设置的环境变量
+# 手动运行请替换为实际路径，如 ~/.claude/skills/web-access
 ```
 
 ## CDP Proxy API
@@ -83,8 +104,8 @@ bash ~/.claude/skills/web-access/scripts/check-deps.sh
 Proxy 通过 WebSocket 直连 Chrome（兼容 `chrome://inspect` 方式，无需命令行参数启动），提供 HTTP API：
 
 ```bash
-# 启动
-node ~/.claude/skills/web-access/scripts/cdp-proxy.mjs &
+# 启动（Agent 会自动管理 Proxy 生命周期，无需手动启动）
+node "${CLAUDE_SKILL_DIR}/scripts/cdp-proxy.mjs" &
 
 # 页面操作
 curl -s "http://localhost:3456/new?url=https://example.com"     # 新建 tab
@@ -97,6 +118,10 @@ curl -s "http://localhost:3456/screenshot?target=ID&file=/tmp/shot.png"     # �
 curl -s "http://localhost:3456/scroll?target=ID&direction=bottom"           # 滚动
 curl -s "http://localhost:3456/close?target=ID"                             # 关闭 tab
 ```
+
+## ⚠️ 使用前提醒
+
+通过浏览器自动化操作社交平台（如小红书）存在账号被平台限流或封禁的风险。**强烈建议使用小号进行操作。**
 
 ## 使用
 
