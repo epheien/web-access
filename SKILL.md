@@ -4,27 +4,27 @@ license: MIT
 github: https://github.com/eze-is/web-access
 description:
   当任务需要浏览器能力或内置联网工具无法完成时使用：访问需登录态或反爬限制的平台（小红书、微信公众号、微博、Twitter/X 等）、动态渲染页面、需要页面交互操作（点击、滚动、填表、上传、截图、视频帧）、或需浏览器内自由导航探索的场景。
-  仅需简单搜索或静态网页抓取（WebSearch/WebFetch/curl 可完成）时，无需加载本 skill。
+  仅需简单搜索或静态网页抓取（Agent 内置搜索/抓取工具即可完成）时，无需加载本 skill。
 metadata:
   author: 一泽Eze
-  version: "2.5.3"
+  version: "2.6.0"
 ---
 
 # web-access Skill
 
 ## 前置检查
 
-在开始联网操作前，先检查 CDP 模式可用性：
+在开始联网操作前，先检查 CDP 模式可用性。本文所有命令的相对路径均以 **skill 目录**（包含 SKILL.md 的目录）为基准——若当前工作目录不在 skill 目录，先 `cd` 过去再执行，或改用完整路径：
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/scripts/check-deps.mjs"
+node scripts/check-deps.mjs
 ```
 
 **Node.js 22+** 必需（使用原生 WebSocket）。
 
 按脚本输出处理：
 - `exit 0` → 继续
-- `exit 2` → 需询问用户偏好，写入 `${CLAUDE_SKILL_DIR}/config.env` 的 `WEB_ACCESS_BROWSER`
+- `exit 2` → 需询问用户偏好，写入 skill 目录下 `config.env` 的 `WEB_ACCESS_BROWSER`
 - `exit 1` → 按 stdout 错误信息处理。若提示包含「Agent 处理顺序」，按其步骤执行（如先用系统命令打开浏览器后重跑），自动可解则不打扰用户；仍失败再向用户求助
 
 支持参数 `--browser <chrome|edge>` 表达本次临时覆盖（不写 config.env）。
@@ -57,15 +57,15 @@ node "${CLAUDE_SKILL_DIR}/scripts/check-deps.mjs"
 
 | 场景 | 工具 |
 |------|------|
-| 搜索摘要或关键词结果，发现信息来源 | **WebSearch** |
-| URL 已知，需要从页面定向提取特定信息 | **WebFetch**（拉取网页内容，由小模型根据 prompt 提取，返回处理后结果） |
+| 搜索摘要或关键词结果，发现信息来源 | **搜索工具**（Agent 内置，如 Claude Code 的 WebSearch，其他运行时名称可能不同） |
+| URL 已知，需要从页面定向提取特定信息 | **网页抓取工具**（Agent 内置，如 Claude Code 的 WebFetch，拉取网页内容由小模型根据 prompt 提取，返回处理后结果；其他运行时名称可能不同） |
 | URL 已知，需要原始 HTML 源码（meta、JSON-LD 等结构化字段） | **curl** |
 | 非公开内容，或已知静态层无效的平台（小红书、微信公众号等公开内容也被反爬限制） | **浏览器 CDP**（直接，跳过静态层） |
 | 需要登录态、交互操作，或需要像人一样在浏览器内自由导航探索 | **浏览器 CDP** |
 
-浏览器 CDP 不要求 URL 已知——可从任意入口出发，通过页面内搜索、点击、跳转等方式找到目标内容。WebSearch、WebFetch、curl 均不处理登录态。
+浏览器 CDP 不要求 URL 已知——可从任意入口出发，通过页面内搜索、点击、跳转等方式找到目标内容。搜索/抓取工具与 curl 均不处理登录态。
 
-**Jina**（可选预处理层，可与 WebFetch/curl 组合使用，由于其特性可节省 tokens 消耗，请积极在任务合适时组合使用）：第三方网络服务，可将网页转为 Markdown，大幅节省 token 但可能有信息损耗。调用方式为 `r.jina.ai/example.com`（URL 前加前缀，不保留原网址 http 前缀），限 20 RPM。适合文章、博客、文档、PDF 等以正文为核心的页面；对数据面板、商品页等非文章结构页面可能提取到错误区块。
+**Jina**（可选预处理层，可与网页抓取工具/curl 组合使用，由于其特性可节省 tokens 消耗，请积极在任务合适时组合使用）：第三方网络服务，可将网页转为 Markdown，大幅节省 token 但可能有信息损耗。调用方式为 `r.jina.ai/example.com`（URL 前加前缀，不保留原网址 http 前缀），限 20 RPM。适合文章、博客、文档、PDF 等以正文为核心的页面；对数据面板、商品页等非文章结构页面可能提取到错误区块。
 
 进入浏览器层后，`/eval` 就是你的眼睛和手：
 
@@ -80,7 +80,7 @@ node "${CLAUDE_SKILL_DIR}/scripts/check-deps.mjs"
 用户指向**本人访问过的页面**（"我之前看的那个讲 X 的文章"、"上次打开过的 XX 面板"）或**组织内部系统**（"我们的 XX 平台"、"公司那个 YY 系统"等公网搜不到的目标）时，检索本地浏览器（Chrome / Edge）书签/历史：
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/scripts/find-url.mjs" [关键词...] [--only bookmarks|history] [--browser chrome|edge] [--limit N] [--since 1d|7h|YYYY-MM-DD] [--sort recent|visits]
+node scripts/find-url.mjs [关键词...] [--only bookmarks|history] [--browser chrome|edge] [--limit N] [--since 1d|7h|YYYY-MM-DD] [--sort recent|visits]
 ```
 
 关键词空格分词、多词 AND，匹配 title + url（可省略）；默认遍历所有已安装的 Chromium 系浏览器（Chrome、Edge），`--browser` 限定单一来源；`--since` / `--sort` 仅作用于历史；默认按最近访问倒序，`--sort visits` 按访问次数排序（适合"高频访问的网站"这类场景）。
@@ -104,7 +104,7 @@ node "${CLAUDE_SKILL_DIR}/scripts/find-url.mjs" [关键词...] [--only bookmarks
 ### 启动
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/scripts/check-deps.mjs"
+node scripts/check-deps.mjs
 ```
 
 脚本会依次检查 Node.js、浏览器调试端口，并确保 Proxy 已连接（未运行则自动启动并等待）。Proxy 启动后持续运行。
@@ -206,7 +206,7 @@ Proxy 持续运行，不建议主动停止——重启后需要在浏览器中�
 
 **子 Agent Prompt 写法：目标导向，而非步骤指令**
 - 必须在子 Agent prompt 中写 `必须加载 web-access skill 并遵循指引` ，子 Agent 会自动加载 skill，无需在 prompt 中复制 skill 内容或指定路径。
-- 子 Agent 有自主判断能力。主 Agent 的职责是说清楚**要什么**，仅在必要与确信时限定**怎么做**。过度指定步骤会剥夺子 Agent 的判断空间，反而引入主 Agent 的假设错误。**避免 prompt 用词对子 Agent 行为的暗示**：「搜索xx」会把子 Agent 锚定到 WebSearch，而实际上有些反爬站点需要 CDP 直接访问主站才能有效获取内容。主 Agent 写 prompt 时应描述目标（「获取」「调研」「了解」），避免用暗示具体手段的动词（「搜索」「抓取」「爬取」）。
+- 子 Agent 有自主判断能力。主 Agent 的职责是说清楚**要什么**，仅在必要与确信时限定**怎么做**。过度指定步骤会剥夺子 Agent 的判断空间，反而引入主 Agent 的假设错误。**避免 prompt 用词对子 Agent 行为的暗示**：「搜索xx」会把子 Agent 锚定到搜索工具，而实际上有些反爬站点需要 CDP 直接访问主站才能有效获取内容。主 Agent 写 prompt 时应描述目标（「获取」「调研」「了解」），避免用暗示具体手段的动词（「搜索」「抓取」「爬取」）。
 
 **分治判断标准：**
 
@@ -214,7 +214,7 @@ Proxy 持续运行，不建议主动停止——重启后需要在浏览器中�
 |----------|-----------|
 | 目标相互独立，结果互不依赖 | 目标有依赖关系，下一个需要上一个的结果 |
 | 每个子任务量足够大（多页抓取、多轮搜索） | 简单单页查询，分治开销大于收益 |
-| 需要 CDP 浏览器或长时间运行的任务 | 几次 WebSearch / Jina 就能完成的轻量查询 |
+| 需要 CDP 浏览器或长时间运行的任务 | 几次搜索 / Jina 就能完成的轻量查询 |
 
 ## 信息核实类任务
 

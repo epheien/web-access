@@ -25,9 +25,15 @@
   <a href="https://web-access.eze.is">🌐 官网</a> · <a href="https://mp.weixin.qq.com/s/rps5YVB6TchT9npAaIWKCw">📖 设计详解</a> · <a href="#安装">⚡ 快速安装</a>
 </p>
 
-AI Agent 原本的联网能力（WebSearch、WebFetch）缺少调度策略和浏览器自动化能力。这个 Agent Skill 补上的是：**联网策略 + CDP 浏览器操作 + 站点经验积累**。兼容所有支持 SKILL.md 的 Agent（Claude Code、Cursor、Gemini CLI、Codex CLI 等）。
+AI Agent 原本的联网能力（内置搜索、网页抓取）缺少调度策略和浏览器自动化能力。这个 Agent Skill 补上的是：**联网策略 + CDP 浏览器操作 + 站点经验积累**。兼容所有支持 SKILL.md 的 Agent（Claude Code、Cursor、Gemini CLI、Codex CLI 等）。
 
 > 推荐必读：[Web Access：一个 Skill，拉满 Agent 联网和浏览器能力](https://mp.weixin.qq.com/s/rps5YVB6TchT9npAaIWKCw) ，完整介绍了 Web-Access Skill 的开发细节与 Agent Skill 设计哲学，帮助你也能写出类似通用、高上限的 Skill
+
+---
+
+## v2.6.0 更新
+
+- **去 Claude Code 依赖，通用化改造** — 移除 `${CLAUDE_SKILL_DIR}` 环境变量依赖，命令统一改为 skill 目录相对路径（脚本自身定位，不依赖任何运行时注入的变量）；内置工具不再硬编码 `WebSearch`/`WebFetch` 之名，改为「搜索工具/网页抓取工具」的通用表述。兼容 pi、Claude Code、Codex、Gemini CLI、Cursor 等所有支持 SKILL.md 的 Agent。
 
 ---
 
@@ -35,7 +41,7 @@ AI Agent 原本的联网能力（WebSearch、WebFetch）缺少调度策略和浏
 
 | 能力 | 说明 |
 |------|------|
-| 联网工具自动选择 | WebSearch / WebFetch / curl / Jina / CDP，按场景自主判断，可任意组合 |
+| 联网工具自动选择 | 内置搜索/抓取工具 / curl / Jina / CDP，按场景自主判断，可任意组合 |
 | CDP Proxy 浏览器操作 | 直连用户日常浏览器（Chrome / Edge / Chromium 系），天然携带登录态，支持动态页面、交互操作、视频截帧 |
 | 三种点击方式 | `/click`（JS click）、`/clickAt`（CDP 真实鼠标事件）、`/setFiles`（文件上传） |
 | 本地浏览器书签/历史检索 | `find-url.mjs` 跨 Chrome / Edge 查询公网搜不到的目标（内部系统）或用户访问过的页面，支持关键词/时间窗/访问频度排序 |
@@ -96,7 +102,7 @@ npx skills add eze-is/web-access
 帮我安装这个 skill：https://github.com/eze-is/web-access
 ```
 
-**方式三：Plugin 安装（Claude Code）**
+**方式三：Plugin 安装（仅 Claude Code）**
 
 ```bash
 claude plugin marketplace add https://github.com/eze-is/web-access
@@ -105,8 +111,10 @@ claude plugin install web-access@web-access --scope user
 
 **方式四：手动**
 
+克隆到你的 Agent 的 skills 目录，例如：
 ```bash
-git clone https://github.com/eze-is/web-access ~/.claude/skills/web-access
+git clone https://github.com/eze-is/web-access ~/.agents/skills/web-access  # pi、Codex、Gemini CLI 等
+git clone https://github.com/eze-is/web-access ~/.claude/skills/web-access     # Claude Code
 ```
 
 ## 前置配置（CDP 模式）
@@ -120,7 +128,7 @@ CDP 模式需要 **Node.js 22+** 和浏览器（Chrome / Edge）开启远程调�
 
 ### 浏览器偏好（config.env）
 
-skill 长期偏好保存在 `${CLAUDE_SKILL_DIR}/config.env`（首次运行自动从 `config.env.template` 创建，gitignored）：
+skill 长期偏好保存在 skill 目录下的 `config.env`（首次运行自动从 `config.env.template` 创建，gitignored）：
 
 ```bash
 # 留空 = 每次启动都询问偏好；设值 = 固定使用该浏览器
@@ -132,21 +140,20 @@ WEB_ACCESS_BROWSER=edge
 **临时用别的浏览器**（不修改 config.env）：
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/scripts/check-deps.mjs" --browser chrome
+node scripts/check-deps.mjs --browser chrome
 ```
 
 **切换浏览器**（proxy 已连接旧的）：
 
 ```bash
-pkill -f cdp-proxy.mjs && node "${CLAUDE_SKILL_DIR}/scripts/check-deps.mjs"
+pkill -f cdp-proxy.mjs && node scripts/check-deps.mjs
 ```
 
 环境检查（Agent 运行时会自动完成前置检查，无需手动执行）：
 
 ```bash
-node "${CLAUDE_SKILL_DIR}/scripts/check-deps.mjs"
-# $CLAUDE_SKILL_DIR 是 skill 加载时自动设置的环境变量
-# 手动运行请替换为实际路径，如 ~/.claude/skills/web-access
+node scripts/check-deps.mjs
+# 在 skill 目录下执行；或改用完整路径：node <skill 目录>/scripts/check-deps.mjs
 ```
 
 ## CDP Proxy API
@@ -155,7 +162,7 @@ Proxy 通过 WebSocket 直连浏览器（兼容 `chrome://inspect` / `edge://ins
 
 ```bash
 # 启动（Agent 会自动管理 Proxy 生命周期，无需手动启动）
-node "${CLAUDE_SKILL_DIR}/scripts/cdp-proxy.mjs" &
+node scripts/cdp-proxy.mjs &
 
 # 页面操作
 curl -s -X POST --data-raw 'https://example.com' http://localhost:3456/new  # 新建 tab（v2.5.3 起 URL 走 POST body）
