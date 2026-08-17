@@ -111,10 +111,10 @@ claude plugin install web-access@web-access --scope user
 
 **方式四：手动**
 
-克隆到你的 Agent 的 skills 目录，例如：
+克隆到你的 Agent 的 skills 目录。`~/.agents/skills/` 是多个 Agent 共同识别的跨运行时目录（pi、Codex、Gemini CLI、Copilot CLI 等均支持），优先使用；不确定时查阅你的 Agent 文档确认 skills 目录：
 ```bash
-git clone https://github.com/eze-is/web-access ~/.agents/skills/web-access  # pi、Codex、Gemini CLI 等
-git clone https://github.com/eze-is/web-access ~/.claude/skills/web-access     # Claude Code
+git clone https://github.com/eze-is/web-access ~/.agents/skills/web-access  # 跨运行时目录，多数 Agent 识别
+git clone https://github.com/eze-is/web-access ~/.claude/skills/web-access     # Claude Code 默认目录
 ```
 
 ## 前置配置（CDP 模式）
