@@ -3,8 +3,8 @@ name: web-access
 license: MIT
 github: https://github.com/eze-is/web-access
 description:
-  所有联网操作必须通过此 skill 处理，包括：搜索、网页抓取、登录后操作、网络交互等。
-  触发场景：用户要求搜索信息、查看网页内容、访问需要登录的网站、操作网页界面、抓取社交媒体内容（小红书、微博、推特等）、读取动态渲染页面、以及任何需要真实浏览器环境的网络任务。
+  当任务需要浏览器能力或内置联网工具无法完成时使用：访问需登录态或反爬限制的平台（小红书、微信公众号、微博、Twitter/X 等）、动态渲染页面、需要页面交互操作（点击、滚动、填表、上传、截图、视频帧）、或需浏览器内自由导航探索的场景。
+  仅需简单搜索或静态网页抓取（WebSearch/WebFetch/curl 可完成）时，无需加载本 skill。
 metadata:
   author: 一泽Eze
   version: "2.5.3"
